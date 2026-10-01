@@ -1,0 +1,4 @@
+pool,mean_rank_ic,valid_date_count,positive_ic_ratio,average_member_count,average_valid_stock_count,average_missing_pair_count
+中小盘股,0.0,2,0.5,2.0,2.0,0.0
+全市场,0.0,2,0.5,4.0,4.0,0.0
+大盘股,0.0,2,0.5,2.0,2.0,0.0
