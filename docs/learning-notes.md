@@ -16,16 +16,16 @@
 
 一行日线数据通常表示一只股票在一个交易日内的行情：
 
-| 字段 | 通俗解释 |
-| --- | --- |
-| 股票代码 | 股票的标识，例如 `000001`；应按字符串保存，避免丢失开头的零 |
-| 日期 | 该行行情对应的交易日 |
-| 开盘价 | 当日开盘附近第一笔成交形成的价格 |
-| 最高价 | 当日成交过的最高价格 |
-| 最低价 | 当日成交过的最低价格 |
-| 收盘价 | 当日收盘时形成的价格 |
-| 成交量 | 当日成交的数量，必须确认数据源使用“股”还是“手” |
-| 成交额 | 当日成交的金额，必须确认数据源的金额单位 |
+| 字段     | 通俗解释                                                     |
+| -------- | ------------------------------------------------------------ |
+| 股票代码 | 股票的标识，例如`000001`；应按字符串保存，避免丢失开头的零 |
+| 日期     | 该行行情对应的交易日                                         |
+| 开盘价   | 当日开盘附近第一笔成交形成的价格                             |
+| 最高价   | 当日成交过的最高价格                                         |
+| 最低价   | 当日成交过的最低价格                                         |
+| 收盘价   | 当日收盘时形成的价格                                         |
+| 成交量   | 当日成交的数量，必须确认数据源使用“股”还是“手”           |
+| 成交额   | 当日成交的金额，必须确认数据源的金额单位                     |
 
 OHLC 是开盘价、最高价、最低价和收盘价四个英文单词的首字母。基础逻辑关系为：
 
@@ -261,6 +261,43 @@ IC 是信息系数（Information Coefficient）的简称，用于衡量同一个
 是否存在同向或反向关系。它本质上是一种相关系数：相关系数是描述两组数值是否经常一起升高或一组升高、
 另一组降低的数字，取值范围为 `-1` 到 `1`。
 
+设日期 `t` 有 `n` 只有效股票，`f_i` 是第 `i` 只股票当天的因子值，`r_i` 是它对应的未来收益，
+`f̄` 和 `r̄` 分别是当天有效因子值和未来收益的平均值。普通 IC 使用 Pearson 相关系数：
+
+```text
+              Σ[(f_i - f̄)(r_i - r̄)]
+IC_t = -----------------------------------------
+       √(Σ(f_i - f̄)² × Σ(r_i - r̄)²)
+```
+
+公式先用 `f_i - f̄` 和 `r_i - r̄` 把两组数据各自移到以平均值为中心。分子的每一项观察两者相对
+各自平均值的方向：两者同为正或同为负时乘积为正，一正一负时乘积为负。把所有股票的乘积相加，便能判断
+高因子是否总体对应高未来收益。
+
+**为什么分母能够标准化**
+
+只看分子会受到计量单位和波动大小影响。例如把因子从小数改写成百分数，所有因子值扩大 100 倍，分子也会
+扩大 100 倍，即使因子与未来收益的关系完全没有改变。分母中的两项平方和分别表示两组“离开各自平均值的
+总幅度”，开平方后得到两个幅度的乘积。分子除以这个幅度乘积后，结果只保留共同变化的方向和紧密程度，
+不再依赖原始单位。
+
+也可以把两组离均差看成两个向量：
+
+```text
+x = [f_1 - f̄, f_2 - f̄, ...]
+y = [r_1 - r̄, r_2 - r̄, ...]
+```
+
+公式的分子是两个向量的点积，分母是两个向量长度的乘积，因此 IC 等于两个向量夹角的余弦。余弦只能位于
+`-1` 到 `1` 之间：方向越一致越接近 `1`，方向越相反越接近 `-1`，接近垂直时约为 `0`。
+
+若把所有因子值乘以正数 `a`，分子会乘以 `a`；分母中因子部分先乘以 `a²`，再开平方得到 `|a|`。
+当 `a > 0` 时，分子和分母的相同倍数正好抵消，所以 IC 不变。给所有因子值加同一个常数也不会改变 IC，
+因为减去新平均值后，该常数会被消掉。若乘以负数，则因子顺序和方向反转，IC 的绝对值不变、正负号反转。
+
+这里的“标准化”是相关系数公式通过分母消除尺度，使结果成为无量纲的比例；它不会修改原始因子列。它与
+第五阶段将学习的“先把因子值转换成均值为 0、标准差为 1”的因子标准化有关，但不是同一个操作。
+
 - IC 为正：因子值较高的股票，未来收益通常也较高，方向符合“因子越大越优”的预期；
 - IC 为负：因子值较高的股票，未来收益通常较低，因子方向可能与预期相反；
 - IC 接近 0：这一天的因子高低与未来收益高低没有明显关系。
@@ -272,9 +309,21 @@ IC 按日期分别计算，只使用同一天中因子值和未来收益都有�
 Rank IC 先把两组数值分别转换成同日排名，再计算排名之间的相关系数，因此主要检查排序是否一致，
 对原始数值相差多大不那么敏感。
 
+```text
+Rank IC_t = Corr(Rank(f_i), Rank(r_i))
+```
+
+普通 IC 使用“原始因子值与原始未来收益”，Rank IC 使用“因子排名与未来收益排名”。两者都必须在同一日期的
+股票截面上计算，不能把不同日期的股票记录混在一起。
+
+Rank IC 更贴近“按因子排名选股”的使用方式，并能降低极端值对相关性的影响。只要股票顺序不变，把极端因子值
+从 `100` 放大到 `10000` 不会改变因子排名，因此不会改变 Rank IC。保持顺序的单调变换也不改变 Rank IC，
+所以它能够观察不一定呈直线、但排序方向大体一致的关系。相应的代价是排名会丢失数值差距：第一名只比第二名
+高一点还是高很多，在 Rank IC 中没有区别；样本太少或并列值太多时，排名提供的信息也会减少。
+
 计算前要把每只股票的因子值与对应未来收益配成一对；任意一边为 `NaN` 时，该股票不能参与当日 IC，
 但不能把缺失值填成 0。若有效股票太少，或者所有有效因子值完全相同，数据没有足够的横截面差异，
-相关系数无法正常定义，应保留为 `NaN`。
+因子离均差平方和为 0，公式分母也为 0，相关系数无法定义，应保留为 `NaN`。未来收益完全相同时同理。
 
 ### 五分组分析
 
@@ -416,7 +465,7 @@ G5 平均未来收益减去 G1 平均未来收益称为高低组收益差，可�
 
 ## 因子研究
 
-### 动量、反转、价值和质量（学习中）
+### 动量、反转、价值和质量
 
 动量因子研究近期表现较强的股票是否可能继续相对较强；反转因子研究近期上涨或下跌是否可能向相反方向修正。
 两者都可以使用历史价格，但研究假设方向相反，且“近期”所指的观察窗口必须事先明确。
@@ -427,6 +476,61 @@ G5 平均未来收益减去 G1 平均未来收益称为高低组收益差，可�
 
 财务数据必须按照实际发布日期使用。报表所属季度结束不等于市场已经知道报表内容；在正式披露之前使用其中数据，
 会引入未来信息。
+
+### 动量观察窗口和稳定性
+
+动量观察窗口是计算当前价格相对多少个交易记录之前价格变化的参数。较短窗口更快反映近期变化，但更容易受到
+短期波动影响；较长窗口更平滑，但反应更慢，而且需要更多历史数据。`N` 日动量需要 `N + 1` 个有效价格，
+历史不足的股票不能得到有效因子值。
+
+参数稳定性表示研究结论在相邻参数、不同年份和不同股票池中是否大体保持相同方向。不能只从大量窗口中挑选
+全样本历史表现最好的一个，因为它可能只是恰好适合这段历史数据，这种现象称为过拟合：规则记住了历史中的
+偶然变化，却未必能适应以后或其他样本。比较窗口时还应保持未来收益期限、股票池和评价方法一致。
+
+教学脚本同时计算 5、20、60 日动量。为了避免某个窗口因有效股票更多而得到样本优势，先用
+`notna().all(axis=1)` 保留三个窗口和未来收益都有效的共同样本，再在每个日期内分别计算各窗口的 Rank IC。
+其中 `axis=1` 表示逐行检查：这一行涉及的所有字段都不是缺失值时才保留。
+
+逐日 Rank IC 随后按日历年份和窗口分组，汇总三个指标：`mean_rank_ic` 是该年有效交易日的平均 Rank IC，
+`valid_date_count` 是实际参与平均的日期数，`positive_ic_ratio` 是 Rank IC 大于 0 的有效日期比例。分年度统计
+可以观察因子方向在不同年份是否稳定；共同样本则保证同一日期内三个窗口面对相同的股票集合。
+
+### 因子标准化（代码待验收）
+
+因子标准化是把同一天不同股票的原始因子值，转换成相对于当天股票截面平均水平的位置。常用的 Z-score 公式为：
+
+```text
+z_i = (x_i - x平均值) / x标准差
+```
+
+先减去同日平均值，使标准化结果以 `0` 为中心；再除以同日标准差，把原始单位换成“距离平均值多少个标准差”。
+例如同日三只股票的因子值为 `10、20、30`，平均值为 `20`，按样本标准差 `10` 计算后，Z-score 为
+`-1、0、1`。`1` 表示比当天平均值高 1 个标准差，`-1` 表示低 1 个标准差。
+
+标准化的主要用途是统一不同因子的尺度。例如一个动量因子的数值通常在小数附近，另一个因子的原始值可能是几十；
+若直接相加，数值范围较大的因子会自然占据更大权重。分别在同日截面标准化后，两者都使用“偏离各自平均值多少个
+标准差”表示，组合时更容易控制每个因子的权重。
+
+标准化应在每个日期的有效股票截面内分别计算，不能把不同日期直接混在一起；缺失因子值不参与当日平均值和标准差，
+标准化结果仍应保留为 `NaN`。若同日所有有效因子值相同，标准差为 `0`，无法进行除法，结果应为 `NaN`。
+
+由于标准差为正数，Z-score 只进行减法和正比例缩放，不改变同日股票的原始排序。标准化统一了中心和尺度，但不会
+自动修复极端值、判断因子方向是否正确，也不会消除行业或市值影响；这些属于其他处理步骤。
+
+教学脚本使用 `groupby().transform()` 为原表中的每一行生成同日均值和标准差：
+
+```python
+same_date = values.groupby(result["date"])
+daily_mean = same_date.transform("mean")
+daily_std = same_date.transform("std")
+result[f"{factor_column}_zscore"] = (
+    values - daily_mean
+) / daily_std
+```
+
+`transform()` 返回与原 DataFrame 行数及索引一致的结果，因此每只股票可以直接使用自己所属日期的均值和标准差。
+Pandas 的 `std` 默认计算样本标准差；同日只有一个有效值时标准差为 `NaN`，所有有效值相同时标准差为 `0`，
+这两种情况都不能形成有效 Z-score。原始因子列保留不变，标准化结果写入新的 `_zscore` 列。
 
 ## Python 基础用法
 
@@ -655,30 +759,32 @@ df.to_csv(
 
 ## 教学脚本索引
 
-| 内容 | 脚本 |
-| --- | --- |
-| 读取和检查日线数据 | [`lessons/stage1_stock_data_basics.py`](../lessons/stage1_stock_data_basics.py) |
-| MA5、MA20 和绘图 | [`lessons/stage1_moving_averages.py`](../lessons/stage1_moving_averages.py) |
-| 均线信号、持仓、收益和净值 | [`lessons/stage1_moving_average_backtest.py`](../lessons/stage1_moving_average_backtest.py) |
-| 未来数据泄漏 | [`lessons/stage1_lookahead_bias.py`](../lessons/stage1_lookahead_bias.py) |
-| 成交时序和交易费用 | [`lessons/stage1_execution_timing_costs.py`](../lessons/stage1_execution_timing_costs.py) |
-| 交易日 | [`lessons/stage2_trading_days.py`](../lessons/stage2_trading_days.py) |
-| 停牌 | [`lessons/stage2_suspension.py`](../lessons/stage2_suspension.py) |
-| 涨跌停 | [`lessons/stage2_price_limits.py`](../lessons/stage2_price_limits.py) |
-| T+1 | [`lessons/stage2_t_plus_one.py`](../lessons/stage2_t_plus_one.py) |
-| 不复权数据 | [`lessons/stage2_unadjusted_prices.py`](../lessons/stage2_unadjusted_prices.py) |
-| 前复权 | [`lessons/stage2_forward_adjusted.py`](../lessons/stage2_forward_adjusted.py) |
-| 后复权 | [`lessons/stage2_backward_adjusted.py`](../lessons/stage2_backward_adjusted.py) |
-| 股票池和幸存者偏差 | [`lessons/stage2_stock_pool.py`](../lessons/stage2_stock_pool.py) |
-| 指数成分股 | [`lessons/stage2_index_constituents.py`](../lessons/stage2_index_constituents.py) |
-| 真实 A 股日线数据 | [`lessons/stage2_real_daily_data.py`](../lessons/stage2_real_daily_data.py) |
-| 20 日动量因子 | [`lessons/stage3_momentum_factor.py`](../lessons/stage3_momentum_factor.py) |
-| 截面排名和未来收益 | [`lessons/stage3_cross_sectional_rank.py`](../lessons/stage3_cross_sectional_rank.py) |
-| 普通 IC 和 Rank IC | [`lessons/stage3_ic.py`](../lessons/stage3_ic.py) |
-| 五分组分析 | [`lessons/stage3_quintile_analysis.py`](../lessons/stage3_quintile_analysis.py) |
-| 按因子选择股票 | [`lessons/stage4_factor_selection.py`](../lessons/stage4_factor_selection.py) |
-| 等权目标持仓 | [`lessons/stage4_equal_weight.py`](../lessons/stage4_equal_weight.py) |
-| 定期调仓 | [`lessons/stage4_periodic_rebalance.py`](../lessons/stage4_periodic_rebalance.py) |
-| 佣金、印花税和滑点 | [`lessons/stage4_transaction_costs.py`](../lessons/stage4_transaction_costs.py) |
-| 未来函数和错误成交假设 | [`lessons/stage4_execution_assumptions.py`](../lessons/stage4_execution_assumptions.py) |
-| 组合每日收益、净值和累计收益 | [`lessons/stage4_portfolio_metrics.py`](../lessons/stage4_portfolio_metrics.py) |
+| 内容                         | 脚本                                                                                         |
+| ---------------------------- | -------------------------------------------------------------------------------------------- |
+| 读取和检查日线数据           | [`lessons/stage1_stock_data_basics.py`](../lessons/stage1_stock_data_basics.py)             |
+| MA5、MA20 和绘图             | [`lessons/stage1_moving_averages.py`](../lessons/stage1_moving_averages.py)                 |
+| 均线信号、持仓、收益和净值   | [`lessons/stage1_moving_average_backtest.py`](../lessons/stage1_moving_average_backtest.py) |
+| 未来数据泄漏                 | [`lessons/stage1_lookahead_bias.py`](../lessons/stage1_lookahead_bias.py)                   |
+| 成交时序和交易费用           | [`lessons/stage1_execution_timing_costs.py`](../lessons/stage1_execution_timing_costs.py)   |
+| 交易日                       | [`lessons/stage2_trading_days.py`](../lessons/stage2_trading_days.py)                       |
+| 停牌                         | [`lessons/stage2_suspension.py`](../lessons/stage2_suspension.py)                           |
+| 涨跌停                       | [`lessons/stage2_price_limits.py`](../lessons/stage2_price_limits.py)                       |
+| T+1                          | [`lessons/stage2_t_plus_one.py`](../lessons/stage2_t_plus_one.py)                           |
+| 不复权数据                   | [`lessons/stage2_unadjusted_prices.py`](../lessons/stage2_unadjusted_prices.py)             |
+| 前复权                       | [`lessons/stage2_forward_adjusted.py`](../lessons/stage2_forward_adjusted.py)               |
+| 后复权                       | [`lessons/stage2_backward_adjusted.py`](../lessons/stage2_backward_adjusted.py)             |
+| 股票池和幸存者偏差           | [`lessons/stage2_stock_pool.py`](../lessons/stage2_stock_pool.py)                           |
+| 指数成分股                   | [`lessons/stage2_index_constituents.py`](../lessons/stage2_index_constituents.py)           |
+| 真实 A 股日线数据            | [`lessons/stage2_real_daily_data.py`](../lessons/stage2_real_daily_data.py)                 |
+| 20 日动量因子                | [`lessons/stage3_momentum_factor.py`](../lessons/stage3_momentum_factor.py)                 |
+| 截面排名和未来收益           | [`lessons/stage3_cross_sectional_rank.py`](../lessons/stage3_cross_sectional_rank.py)       |
+| 普通 IC 和 Rank IC           | [`lessons/stage3_ic.py`](../lessons/stage3_ic.py)                                           |
+| 五分组分析                   | [`lessons/stage3_quintile_analysis.py`](../lessons/stage3_quintile_analysis.py)             |
+| 按因子选择股票               | [`lessons/stage4_factor_selection.py`](../lessons/stage4_factor_selection.py)               |
+| 等权目标持仓                 | [`lessons/stage4_equal_weight.py`](../lessons/stage4_equal_weight.py)                       |
+| 定期调仓                     | [`lessons/stage4_periodic_rebalance.py`](../lessons/stage4_periodic_rebalance.py)           |
+| 佣金、印花税和滑点           | [`lessons/stage4_transaction_costs.py`](../lessons/stage4_transaction_costs.py)             |
+| 未来函数和错误成交假设       | [`lessons/stage4_execution_assumptions.py`](../lessons/stage4_execution_assumptions.py)     |
+| 组合每日收益、净值和累计收益 | [`lessons/stage4_portfolio_metrics.py`](../lessons/stage4_portfolio_metrics.py)             |
+| 动量观察窗口和稳定性         | [`lessons/stage5_momentum_stability.py`](../lessons/stage5_momentum_stability.py)           |
+| 因子标准化                   | [`lessons/stage5_factor_standardization.py`](../lessons/stage5_factor_standardization.py)   |
