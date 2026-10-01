@@ -35,7 +35,26 @@ def main():
             check=True,
         )
         subprocess.run(
-            [str(python), "-c", "import pandas as pd; print('Pandas:', pd.__version__)"],
+            [
+                str(python),
+                "-m",
+                "pip",
+                "install",
+                "--editable",
+                str(ROOT),
+                "--no-deps",
+                "--no-build-isolation",
+            ],
+            check=True,
+        )
+        subprocess.run(
+            [
+                str(python),
+                "-c",
+                "import a_share_quant; import pandas as pd; "
+                "print('Pandas:', pd.__version__); "
+                "print('a_share_quant:', a_share_quant.__version__)",
+            ],
             check=True,
         )
     except (OSError, subprocess.CalledProcessError) as error:

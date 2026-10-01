@@ -1,3 +1,5 @@
 pandas
 matplotlib
 akshare
+setuptools>=61
+wheel

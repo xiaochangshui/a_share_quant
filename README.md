@@ -33,8 +33,10 @@ py -3 scripts/init_env.py
 python scripts/init_env.py
 ```
 
-脚本会创建或复用 `.venv`、安装依赖并验证 Pandas 能否导入。
-预期最后输出 Pandas 版本号和 `Environment ready.`，随后显示激活命令。
+脚本会创建或复用 `.venv`、安装依赖、以可编辑方式安装本项目，并验证 Pandas 和
+`a_share_quant` 包能否导入。预期最后输出两者的版本号和 `Environment ready.`，
+随后显示激活命令。可编辑安装使 `src/a_share_quant/` 中的代码修改立即在环境中生效；
+安装过程复用环境内已有的构建工具，不额外创建联网下载构建依赖的隔离环境。
 重复运行会复用现有环境；遇到不完整或来自另一操作系统的 `.venv` 会报错，
 请先将该目录改名备份，再重试。脚本不会自动删除已有目录。
 
@@ -76,6 +78,35 @@ python -c "import pandas as pd; print(pd.__version__)"
 ```powershell
 .\.venv\Scripts\python.exe -c "import pandas as pd; print(pd.__version__)"
 ```
+
+## 模块化研究代码
+
+可复用代码位于 `src/a_share_quant/`：
+
+- `data.py`：读取并检查日线数据；
+- `factor.py`：计算 20 日动量等因子；
+- `signal.py`：按因子生成前 N 名等权目标；
+- `portfolio.py`：生成调整订单并根据成交记录更新账户；
+- `backtest.py`：按交易日模拟下一交易日执行、交易成本和 T+1；
+- `metrics.py`：计算累计收益和最大回撤。
+
+模块通过字段明确的 DataFrame 交换数据。最小研究流程如下：
+
+```python
+from a_share_quant.backtest import CostConfig, run_backtest
+from a_share_quant.data import load_daily_data
+from a_share_quant.factor import calculate_momentum
+from a_share_quant.metrics import calculate_metrics
+from a_share_quant.signal import generate_top_n_targets
+
+market = load_daily_data("data/daily.csv")
+factors = calculate_momentum(market, window=20)
+targets = generate_top_n_targets(factors, top_n=5)
+result = run_backtest(market, targets, initial_cash=100_000, cost_config=CostConfig())
+metrics = calculate_metrics(result)
+```
+
+`result.equity`、`result.positions` 和 `result.trades` 分别保存净值、实际持仓和交易记录。
 
 ## 本次验收问题
 
