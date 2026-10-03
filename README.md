@@ -108,6 +108,16 @@ metrics = calculate_metrics(result)
 
 `result.equity`、`result.positions` 和 `result.trades` 分别保存净值、实际持仓和交易记录。
 
+## 配置化运行
+
+示例配置位于 `config/stage6_momentum.json`。配置中的相对路径以配置文件所在目录为基准，因此从其他工作目录启动程序也会读取同一份数据并写入同一结果目录。
+
+```bash
+python scripts/run_research.py config/stage6_momentum.json
+```
+
+可复用的 `a_share_quant.runner.run_research()` 串联六个模块，自动化测试或其他 Python 程序可以直接调用；命令行脚本只负责解析参数并调用它。每次运行会覆盖同名结果文件，输出 `factors.csv`、`targets.csv`、`equity.csv`、`positions.csv`、`trades.csv`、`report.json` 和 `config_snapshot.json`。相同配置与输入数据会产生内容相同的结果文件。
+
 ## 本次验收问题
 
 1. 初始化结束时是否出现 `Environment ready.`？

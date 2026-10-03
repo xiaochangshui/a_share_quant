@@ -1,0 +1,13 @@
+{
+  "costs": {
+    "commission_rate": 0.0003,
+    "minimum_commission": 5.0,
+    "slippage_rate": 0.001,
+    "stamp_tax_rate": 0.0005
+  },
+  "data_path": "/home/uto/a_share_quant/data/stage6_research_sample.csv",
+  "initial_cash": 100000.0,
+  "momentum_window": 20,
+  "output_dir": "/home/uto/a_share_quant/result/stage6_momentum",
+  "top_n": 2
+}

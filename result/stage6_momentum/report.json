@@ -1,0 +1,13 @@
+{
+  "metrics": {
+    "cumulative_return": 0.0409862547167279,
+    "max_drawdown": -0.0004905509752886061
+  },
+  "row_counts": {
+    "equity": 30,
+    "factors": 90,
+    "positions": 18,
+    "targets": 20,
+    "trades": 18
+  }
+}

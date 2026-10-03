@@ -760,6 +760,22 @@ from a_share_quant.factor import calculate_momentum
 可以在教学脚本、测试或其他项目代码中复用同一个函数。`requirements.txt` 中同时列出 `setuptools` 和 `wheel`，
 确保 Linux 与 Windows 初始化环境都具备构建该包所需的工具。
 
+### 配置文件与可重复运行入口
+
+配置文件把经常变化的研究参数从 Python 代码中移出，例如数据路径、动量窗口、选股数量、初始资金和交易成本。
+同一份代码读取不同配置即可重复开展研究，也能保留每次研究使用的参数。
+
+第一版使用标准库可以直接读取的 JSON，避免新增 YAML 依赖。`config.py` 负责检查字段和参数，并以配置文件所在
+目录为基准解析相对路径，因此从不同工作目录启动程序时仍会读取同一份数据并写入同一结果目录。
+
+可复用的 `runner.py` 提供 `run_research(config_path)`，依次完成数据读取、动量计算、目标生成、回测和指标计算。
+自动化测试或其他 Python 程序可以直接调用该函数；`scripts/run_research.py` 只是接收命令行参数、调用函数并显示
+摘要，避免把研究逻辑写死在命令行脚本中。
+
+每次运行会覆盖同名结果文件，输出 `factors.csv`、`targets.csv`、`equity.csv`、`positions.csv`、`trades.csv`、
+`report.json` 和 `config_snapshot.json`。示例配置和相同输入连续运行两次后，七个文件的 SHA-256 摘要完全一致，
+说明当前流程能够产生可重复的结果。
+
 ## Python 基础用法
 
 ### 使用 `Path` 处理路径
