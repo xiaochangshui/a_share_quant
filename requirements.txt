@@ -1,5 +1,7 @@
 pandas
+h5py
 matplotlib
 akshare
+rqalpha==6.4.0
 setuptools>=61
 wheel
